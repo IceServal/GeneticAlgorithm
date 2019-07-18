@@ -1,0 +1,6 @@
+{
+    "initial individual number": 20,
+    "group birth rate": 0.8,
+    "keep best individuals rate": 0.2,
+    "mate candidates number": 2
+}

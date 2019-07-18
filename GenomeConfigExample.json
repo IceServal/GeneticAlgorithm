@@ -1,0 +1,17 @@
+{
+    "names": ["alpha", "beta", "gamma", "omega", "xita"],
+    "types": ["float", "int", "bool", "sand", "sand"],
+    "specs": [{"range": [0, 1], "shape": null},
+              {"range": [2, 5], "shape": [2, 2]},
+              {"shape": [1, 2], "tprob": 0.8},
+              {"values": ["apple", "banana", "grape"], "weights": null,
+               "shape": null},
+              {"values": ["large", "big", "middle", "small", "tiny"],
+               "weights": [0.1, 0.1, 0.1, 0.1, 0.6], "shape": [2, 3]}],
+    "crossover method": "integrate",
+    "crossover rate": 0.8,
+    "mutate rate": 0.6,
+    "mutate rate decay rate": 1,
+    "mutate scale": 0.2,
+    "mutate scale decay rate": 0.8
+}
