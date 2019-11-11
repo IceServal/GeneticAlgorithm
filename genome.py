@@ -1,27 +1,18 @@
-"""The implementation of the genetic algorithm"""
+"""The implementation of the genetic algorithm.
+
+@author: icemaster
+@create: 2019-7-17
+@update: 2019-11-6
+
+"""
 
 import json
 import functools
-from copy import deepcopy
-
 import numpy as np
-from numpy import concatenate as npconcat
 
-
-# pylint: disable=too-few-public-methods
-class Group:
-    """The parameters used in genetic algorithm."""
-    def __init__(self, param_path):
-        with open(param_path, "r") as param_file:
-            param = json.load(param_file)
-        self.init_num = param["initial individual number"]
-        self.birth_rate = param["group birth rate"]
-        self.keep_rate = param["keep best individuals rate"]
-        self.matepool_size = param["mate candidates number"]
-
-        self.members = None
-        self.size = 0
-        self.growth_rate = self.birth_rate + self.keep_rate
+# pylint: disable=wrong-import-order
+from copy import deepcopy
+from .utils import roulette_wheel_selection
 
 
 # pylint: disable=too-many-instance-attributes
@@ -166,125 +157,6 @@ class Genome:
         return descendants
 
 
-class Administrator:
-    """The genetic algorithm class which can be used as a template
-    working for standard genetic envolution search problems."""
-    def __init__(self, group, genome, environment=None, fitness_function=None):
-        self.group = group
-        self.genome = genome
-        self.environment = environment
-        self.fitness_eval = fitness_function
-        self.fitness_scores = None
-
-    def global_variables_initialize(self):
-        """Generate several individuals according to group parameters
-        and genome pattern. The fitness scores of the newly generated
-        individuals are also computed."""
-        self.group.size = self.group.init_num
-        self.group.members = self.genome.create_individuals(self.group.size)
-        self.fitness_scores = np.array(self.fitness_eval(self.group.members,
-                                                         self.environment))
-
-    def evolve(self):
-        """Envove one time and update the group."""
-        newbirth_n = int(np.round(self.group.size*self.group.birth_rate))
-        keepalive_n = int(np.round(self.group.size*self.group.keep_rate))
-        pair_num = self.genome.get_pair_num(newbirth_n)
-        cross_pairs = _get_cross_pairs(self.fitness_scores, pair_num,
-                                       self.group.matepool_size)
-        descendants = self._mutate(self._crossover(cross_pairs))
-        keepmembers, keepscores = self._best_individuals_select(keepalive_n)
-
-        descendant_scores = np.array(self.fitness_eval(descendants,
-                                                       self.environment))
-        self.fitness_scores = npconcat((descendant_scores, keepscores))
-
-        self.group.members = npconcat((descendants, keepmembers))
-        self.group.size = newbirth_n + keepalive_n
-        self.genome.mutate_decay()
-
-    def get_winner_board(self):
-        """Return the winner board, which is the encapsuled winner
-        information including the winner private individual information
-        and its score performance."""
-        winner_info = self._best_individuals_select(1)
-        winner_board = {"indiv": winner_info[0][0], "score": winner_info[1][0]}
-
-        return winner_board
-
-    def _crossover(self, cross_pairs):
-        """Do crossover in each selected pairs to generator a batch of
-        descendant individuals.
-
-        :param corss_pairs: a list contains several lists, each list of
-          those contains two indexes indexing the select individuals.
-
-        """
-        descendants = []
-        for pair in cross_pairs:
-            descendants.extend(self.genome.crossover(self.group.members[pair]))
-
-        return np.array(descendants)
-
-    def _mutate(self, individuals):
-        """Do mutation on individuals.
-
-        :param individuals: the individuals which will get mutated.
-
-        """
-        descendants = []
-        for indiv in individuals:
-            descendants.append(self.genome.mutate(indiv))
-
-        return np.array(descendants)
-
-    def _best_individuals_select(self, window_size):
-        """Select best individuals and these individuals will be
-        reserved to next generation of the group without crossover and
-        mutation.
-
-        :param window_size: how many best individuals will be selected.
-
-        """
-        if window_size == 1:
-            winner_idx = np.argmax(self.fitness_scores)
-            winner = np.array([self.group.members[winner_idx]])
-            winner_score = np.array([self.fitness_scores[winner_idx]])
-
-            return winner, winner_score
-
-        indexed_scores = list(zip(range(self.group.size), self.fitness_scores))
-        sorted_scores = sorted(indexed_scores, key=lambda x: x[1],
-                               reverse=True)
-        select_indexes = np.int32(np.array(sorted_scores)[:window_size, 0])
-
-        winners = self.group.members[select_indexes]
-        winner_scores = self.fitness_scores[select_indexes]
-
-        return winners, winner_scores
-
-
-def roulette_wheel_selection(probabilities):
-    """Random select several candidates according to fitness scores and
-    return the best one of the candidates.
-
-    :param fitness_scores: the fitness scores given by fitness feedback
-      function.
-    :param select_width: to generate an individual, how many individuals
-      should be random selected from group and compete to win a chance.
-
-    """
-    prob_sum = 0
-    prob_tower = []
-    for prob in probabilities:
-        prob_sum += prob
-        prob_tower.append(prob_sum)
-
-    lottery = np.random.rand()*prob_sum
-
-    return _tower_binary_search(prob_tower, lottery)
-
-
 def _randint(spec):
     """Generate a random integer according to the specification.
 
@@ -344,99 +216,6 @@ def _randsand(spec):
         return np.reshape(sandpile, spec["shape"])
 
     return values[roulette_wheel_selection(weights)]
-
-
-def _int_gene_integrate(gene_pair, spec):
-    """Integrate two int type gene.
-
-    :param gene_pair: a pair of int type genes.
-    :param spec: the specification of the input gene.
-
-    """
-    fusion = None
-    gene1, gene2 = gene_pair
-    if spec["shape"] is None:
-        min_ = min(gene1, gene2)
-        max_ = max(gene1, gene2)
-        fusion = np.random.randint(min_, max_ + 1)
-    else:
-        fusion = []
-        flatten1 = np.reshape(gene1, [-1])
-        flatten2 = np.reshape(gene2, [-1])
-        gene_size = flatten1.shape[0]
-        for i in range(gene_size):
-            min_ = min(flatten1[i], flatten2[i])
-            max_ = max(flatten1[i], flatten2[i])
-            fusion.append(np.random.randint(min_, max_ + 1))
-
-        fusion = np.reshape(fusion, spec["shape"])
-
-    return fusion
-
-
-def _bool_gene_integrate(gene_pair, spec):
-    """Integrate two bool type gene.
-
-    :param gene_pair: a pair of bool type genes.
-    :param spec: the specification of the input gene.
-
-    """
-    fusion = None
-    gene1, gene2 = gene_pair
-    if spec["shape"] is None:
-        fusion = _randbool({"shape": None, "tprob": (gene1 + gene2)/2})
-    else:
-        fusion = []
-        flatten1 = np.reshape(gene1, [-1])
-        flatten2 = np.reshape(gene2, [-1])
-        gene_size = flatten1.shape[0]
-        for i in range(gene_size):
-            bool1 = bool(flatten1[i])
-            bool2 = bool(flatten2[i])
-            bool_kid = _randbool({"shape": None, "tprob": (bool1 + bool2)/2})
-            fusion.append(bool_kid)
-
-        fusion = np.reshape(fusion, spec["shape"])
-
-    return fusion
-
-
-def _sand_gene_integrate(gene_pair, spec):
-    """Integrate two sand type gene.
-
-    :param gene_pair: a pair of bool type genes.
-    :param sepc: the specification of the input gene.
-
-    """
-    fusion = None
-    gene1, gene2 = gene_pair
-    weights = [1 for _ in range(len(spec["values"]))]
-    if spec["weights"] is not None:
-        weights = spec["weights"]
-    value_weight_map = dict(zip(spec["values"], weights))
-
-    if spec["shape"] is None:
-        fusion = _randsand({"values": [gene1, gene2],
-                            "weights": [value_weight_map[gene1],
-                                        value_weight_map[gene2]],
-                            "shape": None})
-    else:
-        fusion = []
-        flatten1 = np.reshape(gene1, [-1])
-        flatten2 = np.reshape(gene2, [-1])
-        gene_size = flatten1.shape[0]
-        for i in range(gene_size):
-            sand1 = flatten1[i]
-            sand2 = flatten2[i]
-            sand_kid = _randsand({"values": [sand1, sand2],
-                                  "weights": [value_weight_map[sand1],
-                                              value_weight_map[sand2]],
-                                  "shape": None})
-            fusion.append(sand_kid)
-
-        fusion = np.reshape(fusion, spec["shape"])
-
-    return fusion
 
 
 def _float_mutate(gene, spec, mutate_scale):
@@ -551,76 +330,94 @@ def _sand_mutate(gene, spec, mutate_scale):
     return gene
 
 
-def _get_cross_pairs(fitness_scores, pair_num, select_width):
-    """Use roulette wheel selection algorithm to select several pairs.
-    The genes of theses pairs of individuals will crossover with each
-    other and the gene of their descendants will mutate.
+def _int_gene_integrate(gene_pair, spec):
+    """Integrate two int type gene.
 
-    :param fitness_scores: the fitness scores given by fitness feedback
-      function.
-    :param pair_num: how many pairs need to be generated.
-    :param select_width: to generate an individual, how many individuals
-      should be random selected from group and compete to win a chance.
-    :return: a list contain lists. Each list are composed of two
-      individuals' indexes.
+    :param gene_pair: a pair of int type genes.
+    :param spec: the specification of the input gene.
 
     """
-    cross_pairs = []
-    for _ in range(pair_num):
-        cross_pairs.append([_get_mate(fitness_scores, select_width),
-                            _get_mate(fitness_scores, select_width)])
+    fusion = None
+    gene1, gene2 = gene_pair
+    if spec["shape"] is None:
+        min_ = min(gene1, gene2)
+        max_ = max(gene1, gene2)
+        fusion = np.random.randint(min_, max_ + 1)
+    else:
+        fusion = []
+        flatten1 = np.reshape(gene1, [-1])
+        flatten2 = np.reshape(gene2, [-1])
+        gene_size = flatten1.shape[0]
+        for i in range(gene_size):
+            min_ = min(flatten1[i], flatten2[i])
+            max_ = max(flatten1[i], flatten2[i])
+            fusion.append(np.random.randint(min_, max_ + 1))
 
-    return cross_pairs
+        fusion = np.reshape(fusion, spec["shape"])
 
-
-def _get_mate(fitness_scores, select_width):
-    """Use roulette wheel selection algorithm to select several
-    individuals as candidates and select best on of them as the winner.
-    The gene of winner will be crossed with another individual, namely,
-    it will be a mate.
-
-    :param fitness_scores: the fitness scores given by fitness feedback
-      function.
-    :param select_width: to generate an individual, how many individuals
-      should be random selected from group and compete to win a chance.
-
-    """
-    candidates = []
-    election_scores = []
-    for _ in range(select_width):
-        luckydog = roulette_wheel_selection(fitness_scores)
-        candidates.append(luckydog)
-        election_scores.append(fitness_scores[luckydog])
-    winner = candidates[np.argmax(election_scores)]
-
-    return winner
+    return fusion
 
 
-def _tower_binary_search(sorted_array, target):
-    """A especially binary search algorithm implementation for roulette
-    wheel selection.
+def _bool_gene_integrate(gene_pair, spec):
+    """Integrate two bool type gene.
 
-    :param sorted_array: a sorted array used for search the target.
-    :param target: you know, the target value. In most of the cases, it
-      has same type with the elements in the sorted array.
+    :param gene_pair: a pair of bool type genes.
+    :param spec: the specification of the input gene.
 
     """
-    if target >= sorted_array[-1]:
-        print("Invalid target value.")
-        return len(sorted_array) - 1
-    low, high = 0, len(sorted_array)
-    while low <= high:
-        mid = int((low + high)/2)
-        mid_value = sorted_array[mid]
-        if mid == 0:
-            if target < mid_value:
-                return mid
-            low = mid + 1
-        else:
-            mid_left_value = sorted_array[mid - 1]
-            if mid_left_value <= target < mid_value:
-                return mid
-            if target < mid_left_value:
-                high = mid - 1
-            else:
-                low = mid + 1
+    fusion = None
+    gene1, gene2 = gene_pair
+    if spec["shape"] is None:
+        fusion = _randbool({"shape": None, "tprob": (gene1 + gene2)/2})
+    else:
+        fusion = []
+        flatten1 = np.reshape(gene1, [-1])
+        flatten2 = np.reshape(gene2, [-1])
+        gene_size = flatten1.shape[0]
+        for i in range(gene_size):
+            bool1 = bool(flatten1[i])
+            bool2 = bool(flatten2[i])
+            bool_kid = _randbool({"shape": None, "tprob": (bool1 + bool2)/2})
+            fusion.append(bool_kid)
+
+        fusion = np.reshape(fusion, spec["shape"])
+
+    return fusion
+
+
+def _sand_gene_integrate(gene_pair, spec):
+    """Integrate two sand type gene.
+
+    :param gene_pair: a pair of bool type genes.
+    :param sepc: the specification of the input gene.
+
+    """
+    fusion = None
+    gene1, gene2 = gene_pair
+    weights = [1 for _ in range(len(spec["values"]))]
+    if spec["weights"] is not None:
+        weights = spec["weights"]
+    value_weight_map = dict(zip(spec["values"], weights))
+
+    if spec["shape"] is None:
+        fusion = _randsand({"values": [gene1, gene2],
+                            "weights": [value_weight_map[gene1],
+                                        value_weight_map[gene2]],
+                            "shape": None})
+    else:
+        fusion = []
+        flatten1 = np.reshape(gene1, [-1])
+        flatten2 = np.reshape(gene2, [-1])
+        gene_size = flatten1.shape[0]
+        for i in range(gene_size):
+            sand1 = flatten1[i]
+            sand2 = flatten2[i]
+            sand_kid = _randsand({"values": [sand1, sand2],
+                                  "weights": [value_weight_map[sand1],
+                                              value_weight_map[sand2]],
+                                  "shape": None})
+            fusion.append(sand_kid)
+
+        fusion = np.reshape(fusion, spec["shape"])
+
+    return fusion
