@@ -1,8 +1,11 @@
-"""The implementation of the genetic algorithm.
+"""The definition of the controller of the genetic algorithm. The
+controller can initialize a group, control the envolution of the group
+and output the member genetic information and their performance in
+specific environment(fitness_function).
 
 @author: icemaster
 @create: 2019-7-17
-@update: 2019-11-6
+@update: 2019-11-12
 
 """
 
@@ -13,8 +16,7 @@ from .utils import roulette_wheel_selection
 
 
 class Controller:
-    """The genetic algorithm class which can be used as a template
-    working for standard genetic envolution search problems."""
+    """The deifinition of the controller."""
     def __init__(self, group, genome, environment=None, fitness_function=None):
         self.group = group
         self.genome = genome

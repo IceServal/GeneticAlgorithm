@@ -1,8 +1,10 @@
-"""The definition.
+"""The definition of the population. A population group contains several
+individuals which belong to same specie. Also some properties, such as
+group size and birth rate, are attached to the group.
 
 @author: icemaster
 @create: 2019-7-17
-@update: 2019-11-6
+@update: 2019-11-12
 
 """
 
@@ -11,7 +13,7 @@ import json
 
 # pylint: disable=too-few-public-methods
 class Group:
-    """The parameters used in genetic algorithm."""
+    """The definition of the group."""
     def __init__(self, param_path):
         with open(param_path, "r") as param_file:
             param = json.load(param_file)

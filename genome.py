@@ -1,8 +1,12 @@
-"""The implementation of the genetic algorithm.
+"""The definition of the genome. A genome should not only contains the
+integral genetic information, but also record the interaction method
+between the genomes from parents to generate the offspring. We also put
+the function which can create several random individuals according to
+the genetic information in this class.
 
 @author: icemaster
 @create: 2019-7-17
-@update: 2019-11-6
+@update: 2019-11-12
 
 """
 
@@ -17,7 +21,7 @@ from .utils import roulette_wheel_selection
 
 # pylint: disable=too-many-instance-attributes
 class Genome:
-    """The pattern of gene including data type and range."""
+    """The definition of the genome."""
     def __init__(self, pattern_path, gene_editor=None):
         with open(pattern_path, "r") as pattern_file:
             pattern = json.load(pattern_file)

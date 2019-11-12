@@ -1,4 +1,4 @@
-"""The implementation of the genetic algorithm.
+"""The utilization functions of the genetic algorithm.
 
 @author: icemaster
 @create: 2019-7-17
